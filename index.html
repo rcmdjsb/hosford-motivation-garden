@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hosford Motivation Garden</title>
+  <meta
+    name="description"
+    content="An interactive 3D twilight self-reflection garden for Hosford Middle School students."
+  />
+
+  <!-- Optional web font with instant clean system fallbacks for offline/Chromebook resilience -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="./style.css" />
+
+  <!-- Three.js 0.187.0 via ES Module Importmap (Zero Build Step) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- 3D WebGL Sanctuary Canvas -->
+  <canvas id="garden-canvas" aria-label="Hosford Motivation Garden 3D Sanctuary"></canvas>
+
+  <!-- Floating 3D-to-2D Landmark Markers & Overhead Sky Constellation Markers -->
+  <div id="marker-layer" class="marker-layer" aria-hidden="false"></div>
+  <div id="sky-marker-layer" class="marker-layer sky-marker-layer" aria-hidden="false"></div>
+
+  <!-- Optional Pointer-Lock Reticle -->
+  <div id="crosshair" class="crosshair" hidden aria-hidden="true"></div>
+
+  <!-- Top HUD Bar -->
+  <header class="hud-top" role="banner">
+    <div class="brand-pill glass-panel">
+      <span class="brand-emblem" aria-hidden="true">✦</span>
+      <div class="brand-copy">
+        <h1>Hosford Motivation Garden</h1>
+        <div class="progress-row" aria-live="polite">
+          <div id="progress-dots" class="progress-dots" aria-hidden="true"></div>
+          <span id="progress-text" class="progress-text">0 / 4 Shrines Lit</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-actions">
+      <button
+        id="btn-look-sky"
+        type="button"
+        class="hud-btn glass-panel sky-hud-btn"
+        aria-pressed="false"
+        title="Look up at the twilight sky to explore motivational quotes, videos, and stories"
+      >
+        <span class="hud-btn-icon" aria-hidden="true">★</span>
+        <span id="look-sky-label">Look Up: Sky Stories</span>
+      </button>
+
+      <button
+        id="btn-blueprint-hud"
+        type="button"
+        class="hud-btn glass-panel blueprint-hud-btn"
+        title="View your Garden Blueprint Card at the Central Fountain"
+      >
+        <span class="hud-btn-icon" aria-hidden="true">◈</span>
+        <span>Garden Blueprint</span>
+      </button>
+
+      <button
+        id="btn-pointer-lock"
+        type="button"
+        class="hud-btn glass-panel"
+        aria-pressed="false"
+        title="Optional: toggle full-screen mouse look (Esc to exit)"
+      >
+        <span class="hud-btn-icon" aria-hidden="true">⌖</span>
+        <span id="pointer-lock-label">Drag Look</span>
+      </button>
+
+      <button
+        id="btn-help"
+        type="button"
+        class="hud-btn glass-panel hud-btn-icon-only"
+        aria-label="Controls help"
+        title="Controls & Navigation Help"
+      >
+        ?
+      </button>
+    </div>
+  </header>
+
+  <!-- Subtle Sky-Gaze Banner (Shown when student tilts camera up toward the stars) -->
+  <div id="sky-gaze-banner" class="sky-gaze-banner glass-panel" hidden>
+    <span class="sky-banner-copy">
+      <strong>Sky of Stories</strong> — Drag around &amp; click any glowing constellation for quotes, videos &amp; resilience stories
+    </span>
+    <button id="btn-browse-sky" type="button" class="sky-banner-btn">
+      Browse All (10)
+    </button>
+  </div>
+
+  <!-- Proximity Interaction Prompt -->
+  <div id="proximity-prompt" class="proximity-prompt glass-panel" hidden>
+    <button id="btn-proximity-open" type="button" class="proximity-btn">
+      <kbd class="keycap">E</kbd>
+      <span id="proximity-label">Open Shrine</span>
+    </button>
+  </div>
+
+  <!-- 3D Animal Guide Speech Bubble Card -->
+  <aside
+    id="guide-dialogue"
+    class="guide-dialogue glass-panel"
+    aria-live="polite"
+    aria-label="Shrine Animal Guide"
+    hidden
+  >
+    <div class="guide-header">
+      <div class="guide-identity">
+        <span id="guide-avatar" class="guide-avatar" aria-hidden="true">🦉</span>
+        <div>
+          <strong id="guide-name" class="guide-name">Nova the Twilight Owl</strong>
+          <span id="guide-role" class="guide-role">Curiosity Guide</span>
+        </div>
+      </div>
+      <button
+        id="btn-close-guide"
+        type="button"
+        class="guide-dismiss-btn"
+        aria-label="Hide guide message"
+        title="Hide guide speech bubble"
+      >
+        ✕
+      </button>
+    </div>
+
+    <p id="guide-speech-text" class="guide-speech-text"></p>
+
+    <div class="guide-actions">
+      <button id="btn-guide-next" type="button" class="guide-action-btn">
+        Next Tip →
+      </button>
+      <button id="btn-guide-speak" type="button" class="guide-action-btn" aria-pressed="false">
+        🔊 Read Aloud
+      </button>
+      <button id="btn-guide-reflect" type="button" class="guide-action-btn guide-action-primary">
+        ✦ Reflect Here
+      </button>
+    </div>
+  </aside>
+
+  <!-- Chromebook-Friendly Quick-Travel Bottom HUD Bar -->
+  <nav class="quick-travel-bar glass-panel" aria-label="Quick-Travel Navigation">
+    <span class="qt-heading">Quick-Travel</span>
+    <div id="quick-travel-buttons" class="qt-buttons"></div>
+  </nav>
+
+  <!-- Toast Notifications -->
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- First-Visit Welcome Overlay -->
+  <section
+    id="welcome-overlay"
+    class="welcome-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="welcome-title"
+    hidden
+  >
+    <div class="welcome-card glass-panel">
+      <div class="welcome-badge">Hosford Middle School • Twilight Sanctuary</div>
+      <h2 id="welcome-title">Welcome to the Hosford Motivation Garden</h2>
+      <p class="welcome-lead">
+        Explore this peaceful twilight sanctuary to check in on your motivation fuel, plant
+        <strong>4 High School Readiness Habits</strong>, and illuminate your personal
+        <strong>Garden Blueprint</strong> at the Central Fountain.
+      </p>
+
+      <div class="controls-grid">
+        <div class="control-item">
+          <span class="control-key">W A S D / Arrows</span>
+          <span class="control-desc">Walk along the stone garden paths</span>
+        </div>
+        <div class="control-item">
+          <span class="control-key">Click &amp; Drag</span>
+          <span class="control-desc">Look around—or tilt up at the twilight sky for quotes, videos &amp; stories!</span>
+        </div>
+        <div class="control-item">
+          <span class="control-key">E or Click Beacon</span>
+          <span class="control-desc">Open a shrine reflection overlay</span>
+        </div>
+        <div class="control-item">
+          <span class="control-key">Quick-Travel Bar</span>
+          <span class="control-desc">Glide smoothly to any zone in 1 click</span>
+        </div>
+      </div>
+
+      <button id="btn-enter-garden" type="button" class="btn-primary btn-lg">
+        Enter the Garden
+      </button>
+    </div>
+  </section>
+
+  <!-- Compact Controls Help Popover -->
+  <section
+    id="help-overlay"
+    class="welcome-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="help-title"
+    hidden
+  >
+    <div class="welcome-card glass-panel help-card">
+      <div class="modal-header-simple">
+        <h2 id="help-title">Garden Controls</h2>
+        <button id="btn-close-help" type="button" class="btn-icon-close" aria-label="Close help">
+          ✕
+        </button>
+      </div>
+      <div class="controls-grid">
+        <div class="control-item">
+          <span class="control-key">W A S D / Arrows</span>
+          <span class="control-desc">Walk along the garden paths</span>
+        </div>
+        <div class="control-item">
+          <span class="control-key">Click &amp; Drag</span>
+          <span class="control-desc">Look around (or toggle Pointer Lock top-right)</span>
+        </div>
+        <div class="control-item">
+          <span class="control-key">Press E / Click</span>
+          <span class="control-desc">Open nearby shrine or Central Fountain</span>
+        </div>
+        <div class="control-item">
+          <span class="control-key">Quick-Travel Bar</span>
+          <span class="control-desc">Glide smoothly directly to any landmark</span>
+        </div>
+      </div>
+      <p class="help-note">
+        <strong>Need a spark of motivation?</strong> Drag upward (or click <em>Look Up: Sky Stories</em>)
+        to explore motivational quotes, videos, and true stories of overcoming challenges in the twilight stars.
+        All reflections auto-save locally—visit the <strong>Central Fountain</strong> once at least 1 shrine is lit to export your Garden Blueprint.
+      </p>
+      <button id="btn-help-done" type="button" class="btn-primary">Back to Garden</button>
+    </div>
+  </section>
+
+  <!-- Shrine Reflection Overlay Modal -->
+  <dialog id="shrine-modal" class="garden-dialog" aria-labelledby="shrine-title">
+    <div class="modal-shell glass-panel">
+      <header class="modal-header">
+        <div>
+          <div id="shrine-zone-badge" class="zone-badge">Zone 1 • Curiosity &amp; Exploration</div>
+          <h2 id="shrine-title" class="modal-title">Observatory Overlook</h2>
+        </div>
+        <div class="modal-header-right">
+          <span id="autosave-pill" class="autosave-pill">Auto-saved</span>
+          <button
+            id="btn-close-shrine"
+            type="button"
+            class="btn-icon-close"
+            aria-label="Close reflection"
+          >
+            ✕
+          </button>
+        </div>
+      </header>
+
+      <form id="shrine-form" class="modal-body" novalidate>
+        <!-- Step 1: Fuel Slider + Energy State Toggle -->
+        <section class="form-section">
+          <div class="fuel-header-row">
+            <div>
+              <label for="fuel-slider" id="fuel-label" class="section-label">Curiosity Fuel</label>
+              <p id="fuel-description" class="section-sub"></p>
+            </div>
+            <div class="fuel-score-badge" aria-live="polite">
+              <span id="fuel-value-display">7</span>
+              <span class="fuel-max">/ 10</span>
+            </div>
+          </div>
+
+          <div class="slider-wrap">
+            <input
+              id="fuel-slider"
+              type="range"
+              min="1"
+              max="10"
+              step="1"
+              value="7"
+              class="fuel-slider"
+            />
+            <div class="slider-ticks" aria-hidden="true">
+              <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+              <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+            </div>
+          </div>
+
+          <div class="energy-toggle-group" role="group" aria-label="Energy battery status">
+            <button
+              id="btn-energy-high"
+              type="button"
+              class="energy-toggle-btn"
+              data-energy="Running High"
+              aria-pressed="true"
+            >
+              <span aria-hidden="true">⚡</span> Running High
+            </button>
+            <button
+              id="btn-energy-low"
+              type="button"
+              class="energy-toggle-btn"
+              data-energy="Battery Low"
+              aria-pressed="false"
+            >
+              <span aria-hidden="true">🔋</span> Battery Low
+            </button>
+          </div>
+        </section>
+
+        <!-- Step 2: Plant 1 High School Readiness Habit -->
+        <section class="form-section">
+          <div class="section-label">Plant 1 High School Readiness Habit</div>
+          <p class="section-sub">Choose the habit you want to grow at this shrine:</p>
+          <div id="habit-options" class="habit-options" role="radiogroup" aria-label="High School Readiness Habits"></div>
+        </section>
+
+        <!-- Step 3: Short Reflection Prompt -->
+        <section class="form-section">
+          <label for="reflection-input" id="reflection-prompt-label" class="section-label"></label>
+          <textarea
+            id="reflection-input"
+            class="reflection-textarea"
+            rows="3"
+            maxlength="600"
+          ></textarea>
+          <div class="textarea-meta">
+            <span id="shrine-validation-msg" class="validation-msg" role="alert"></span>
+            <span id="char-count" class="char-count">0 / 600</span>
+          </div>
+        </section>
+
+        <footer class="modal-footer">
+          <button id="btn-cancel-shrine" type="button" class="btn-secondary">
+            Save Draft &amp; Return
+          </button>
+          <button id="btn-submit-shrine" type="submit" class="btn-primary">
+            ✦ Plant Habit &amp; Light Shrine
+          </button>
+        </footer>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Central Fountain — Garden Blueprint Card Modal -->
+  <dialog id="blueprint-modal" class="garden-dialog blueprint-dialog" aria-labelledby="blueprint-title">
+    <div class="modal-shell glass-panel blueprint-shell">
+      <header class="modal-header no-print">
+        <div>
+          <div class="zone-badge">Central Fountain • Final Summary</div>
+          <h2 id="blueprint-title" class="modal-title">Your Garden Blueprint Card</h2>
+        </div>
+        <button
+          id="btn-close-blueprint"
+          type="button"
+          class="btn-icon-close"
+          aria-label="Close Garden Blueprint"
+        >
+          ✕
+        </button>
+      </header>
+
+      <div id="blueprint-printable" class="blueprint-body">
+        <!-- Print-Only Clean Header -->
+        <div class="print-only-header">
+          <h1>Hosford Motivation Garden — Student Blueprint</h1>
+          <p id="print-meta-line"></p>
+        </div>
+
+        <!-- Celebration Banner (Shown when 4/4 Shrines Lit) -->
+        <div id="blueprint-celebration" class="celebration-banner" hidden>
+          <span class="celebration-star" aria-hidden="true">✦</span>
+          <div>
+            <strong>All 4 Shrines Illuminated!</strong>
+            <span>Your Hosford Motivation Garden is in full bloom and ready for high school.</span>
+          </div>
+        </div>
+
+        <!-- Student Name & Progress Row -->
+        <div class="blueprint-meta-row">
+          <div class="student-name-field">
+            <label for="student-name-input" class="meta-label">Student Name (Optional for Classroom)</label>
+            <input
+              id="student-name-input"
+              type="text"
+              class="text-input"
+              placeholder="Enter your name..."
+              maxlength="80"
+              autocomplete="name"
+            />
+          </div>
+          <div class="blueprint-stats">
+            <div class="stat-pill">
+              <span class="stat-label">Shrines Lit</span>
+              <strong id="bp-completed-count">0 / 4</strong>
+            </div>
+            <div class="stat-pill">
+              <span class="stat-label">Avg. Fuel</span>
+              <strong id="bp-avg-fuel">—</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Radar Chart + Planted Habits Layout -->
+        <div class="blueprint-main-grid">
+          <section class="bp-card radar-card">
+            <h3 class="bp-card-title">4-Axis Motivation Radar</h3>
+            <div id="radar-chart-container" class="radar-chart-container"></div>
+          </section>
+
+          <section class="bp-card habits-card">
+            <h3 class="bp-card-title">Planted High School Readiness Habits</h3>
+            <div id="bp-habits-list" class="bp-habits-list"></div>
+          </section>
+        </div>
+
+        <!-- Written Reflections -->
+        <section class="bp-card reflections-card">
+          <h3 class="bp-card-title">Written Reflections</h3>
+          <div id="bp-reflections-list" class="bp-reflections-list"></div>
+        </section>
+      </div>
+
+      <footer class="modal-footer blueprint-footer no-print">
+        <div class="footer-left-actions">
+          <button id="btn-reset-garden" type="button" class="btn-danger-ghost">
+            Reset Garden
+          </button>
+        </div>
+        <div class="footer-right-actions">
+          <button id="btn-copy-summary" type="button" class="btn-secondary">
+            📋 Copy Summary to Clipboard
+          </button>
+          <button id="btn-print-pdf" type="button" class="btn-primary">
+            🖨 Print / Save PDF
+          </button>
+        </div>
+      </footer>
+    </div>
+  </dialog>
+
+  <!-- Sky of Stories — Quotes, Videos & Resilience Stories Modal -->
+  <dialog id="sky-modal" class="garden-dialog sky-dialog" aria-labelledby="sky-modal-title">
+    <div class="modal-shell glass-panel">
+      <header class="modal-header">
+        <div>
+          <div id="sky-type-badge" class="zone-badge">✦ Motivational Quote • Resilience</div>
+          <h2 id="sky-modal-title" class="modal-title">Sky of Stories</h2>
+        </div>
+        <div class="modal-header-right">
+          <span id="sky-explored-pill" class="autosave-pill">0 / 10 Stars Explored</span>
+          <button
+            id="btn-close-sky"
+            type="button"
+            class="btn-icon-close"
+            aria-label="Close sky inspiration"
+          >
+            ✕
+          </button>
+        </div>
+      </header>
+
+      <!-- Category Filter & Quick Constellation Picker -->
+      <div class="sky-browser-strip">
+        <div id="sky-filter-tabs" class="sky-filter-tabs" role="tablist" aria-label="Filter sky inspirations">
+          <button type="button" class="sky-tab is-active" data-filter="all" role="tab" aria-selected="true">All</button>
+          <button type="button" class="sky-tab" data-filter="quote" role="tab" aria-selected="false">✦ Quotes</button>
+          <button type="button" class="sky-tab" data-filter="video" role="tab" aria-selected="false">▶ Videos</button>
+          <button type="button" class="sky-tab" data-filter="story" role="tab" aria-selected="false">★ Stories</button>
+        </div>
+        <div id="sky-pill-strip" class="sky-pill-strip" aria-label="Choose a sky constellation"></div>
+      </div>
+
+      <!-- Dynamic Inspiration Content -->
+      <div id="sky-modal-body" class="modal-body sky-modal-body"></div>
+
+      <footer class="modal-footer sky-modal-footer">
+        <div class="sky-nav-group">
+          <button id="btn-sky-prev" type="button" class="btn-secondary">← Previous Star</button>
+          <button id="btn-sky-next" type="button" class="btn-secondary">Next Star →</button>
+        </div>
+        <button id="btn-sky-done" type="button" class="btn-primary">Back to Sky</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <script type="module" src="./ui.js"></script>
+</body>
+</html>
